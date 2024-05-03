@@ -6,7 +6,7 @@
 /*   By: mkartit <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/03/14 21:25:38 by mkartit           #+#    #+#             */
-/*   Updated: 2024/03/14 21:25:40 by mkartit          ###   ########.fr       */
+/*   Updated: 2024/04/16 11:35:15 by mkartit          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 # include <fcntl.h>
 
 # ifndef BUFFER_SIZE
-#  define BUFFER_SIZE 1024
+#  define BUFFER_SIZE 10000
 # endif
 
 typedef struct s_file
