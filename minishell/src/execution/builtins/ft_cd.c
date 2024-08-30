@@ -27,6 +27,11 @@ static void	update_env(char *key, char *value)
 			tmp->value = ft_strdup("");
 		tmp->is_exported = 1;
 	}
+	else
+	{
+		if (value)
+			add_env(g_mshell.env, ft_strdup(key), ft_strdup(value));
+	}
 }
 
 static int	cd_runner(char *dir)
@@ -85,6 +90,11 @@ static int	cha_dir(char *dir)
 	return (cd_runner(path));
 }
 
+/*
+	make sure to chnage this path to yours
+		/nfs/homes/mkartit --> your path
+	in case it didn't HOME in the env
+*/
 int	cha_dir_exp(char **dir, t_env *env)
 {
 	char	*path;

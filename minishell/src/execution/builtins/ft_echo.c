@@ -23,7 +23,7 @@ static int	echo_arg(char *arg)
 		while (arg[i] == 'n')
 			i++;
 	}
-	if (arg[i] == '\0')
+	if (arg[i] == '\0' && ft_strlen(arg))
 		return (1);
 	return (0);
 }
