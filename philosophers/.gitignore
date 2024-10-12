@@ -1,0 +1,11 @@
+# ignore all object files
+*.o
+
+#ignore all executables
+philo
+philo_bonus
+
+# don't ignore the folder stupid
+!philo/
+!philo_bonus/
+
