@@ -1,0 +1,85 @@
+#include "../Services.hpp"
+#include "../../Server/Server.hpp"
+#include "../../Client/Client.hpp"
+#include "../../Channel/Channel.hpp"
+
+void Services::topic(Client &client, std::vector<std::string> &params)
+{
+
+    if (!server)
+    {
+        throw std::runtime_error("Server reference is null");
+    }
+
+    if (params.size() < 1)
+    {
+        server->dmClient(client, ERR_NEEDMOREPARAMS, "TOPIC :bad number of parameters");
+        return;
+    }
+
+    std::string channel_name = params[0];
+
+    if (channel_name[0] != '#')
+    {
+        server->dmClient(client, ERR_NOSUCHCHANNEL, channel_name + " :No such channel");
+        return;
+    }
+
+    std::string new_topic;
+
+    if (params.size() > 1)
+    {
+        new_topic = params[1];
+        if (new_topic.empty() || new_topic[0] != ':')
+        {
+            server->dmClient(client, ERR_UNKNOWNCOMMAND, "TOPIC :badly formed topic");
+            return;
+        }
+
+        new_topic.erase(0, 1);
+
+        for (size_t i = 2; i < params.size(); ++i)
+        {
+            new_topic += " " + params[i];
+        }
+    }
+
+    Channel *channel = server->getChannel(channel_name);
+    if (!channel)
+    {
+        server->dmClient(client, ERR_NOSUCHCHANNEL, channel_name + " :No such channel");
+        return;
+    }
+
+    if (!channel->isMember(client))
+    {
+        server->dmClient(client, ERR_NOTONCHANNEL, channel_name + " :You're not a member of that channel");
+        return;
+    }
+
+    if (new_topic.empty())
+    {
+        if (channel->getTopic().empty())
+        {
+            server->dmClient(client, RPL_NOTOPIC, channel->getName() + " :No topic is set");
+        }
+        else
+        {
+            server->dmClient(client, RPL_TOPIC, channel->getName() + " :" + channel->getTopic());
+        }
+
+        return;
+    }
+
+    bool is_operator = channel->isOperator(client);
+    bool only_operators = channel->mode('t');
+
+    if (only_operators && !is_operator)
+    {
+        server->dmClient(client, ERR_CHANOPRIVSNEEDED, channel_name + " :Only channel operators may set the topic");
+        return;
+    }
+
+    channel->setTopic(new_topic);
+    channel->broadcastToMembers(client, "TOPIC " + channel_name + " :" + new_topic);
+}

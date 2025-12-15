@@ -1,0 +1,109 @@
+#include "../Services.hpp"
+#include "../../Server/Server.hpp"
+#include "../../Client/Client.hpp"
+#include "../../Channel/Channel.hpp"
+
+void Services::kick(Client &client, std::vector<std::string> &params)
+{
+    if (params.size() < 2)
+    {
+        server->dmClient(client, ERR_NEEDMOREPARAMS, "KICK :Not enough parameters");
+        return;
+    }
+
+    // KICK <channel> <user>
+    // KICK <channel> <user> [<reason>]
+    // KICK <server> <channel> <user> [<reason>]
+
+    size_t index = 0;
+
+    if (params[0][0] != '#')
+    {
+        index = 1;
+    }
+
+    if (index == 1 && params.size() < 3)
+    {
+        server->dmClient(client, ERR_NEEDMOREPARAMS, "KICK :Not enough parameters");
+        return;
+    }
+
+    std::string channel_name = params[index];
+    std::string user_to_kick = params[index + 1];
+    std::string reason;
+
+    if (params.size() > index + 2)
+    {
+        reason = params[index + 2];
+
+        if (reason.empty() || reason[0] != ':')
+        {
+            server->dmClient(client, ERR_NOTEXTTOSEND, "KICK :reason badly formatted");
+            return;
+        }
+
+        for (size_t i = index + 3; i < params.size(); ++i)
+        {
+            reason += " " + params[i];
+        }
+    }
+
+    reason.erase(0, 1);
+
+    // debug:
+    server->log("KICK command: channel='" + channel_name + "' user='" + user_to_kick + "' reason='" + reason + "'");
+
+    if (channel_name[0] != '#')
+    {
+        server->dmClient(client, ERR_NOSUCHCHANNEL, channel_name + " :No such channel");
+        return;
+    }
+
+    Channel *channel = server->getChannel(channel_name);
+    if (!channel)
+    {
+        server->dmClient(client, ERR_NOSUCHCHANNEL, channel_name + " :No such channel");
+        return;
+    }
+
+    if (!channel->isOperator(client))
+    {
+        server->dmClient(client, ERR_CHANOPRIVSNEEDED, channel_name + " :You're not channel operator");
+        return;
+    }
+
+    Client *target_client = server->getClientByNick(user_to_kick);
+    if (!target_client)
+    {
+        server->dmClient(client, ERR_NOSUCHNICK, user_to_kick + " :No such nick/channel");
+        return;
+    }
+
+    if (!channel->isMember(*target_client))
+    {
+        server->dmClient(client, ERR_USERONCHANNEL, user_to_kick + " " + channel_name + " :They aren't on that channel");
+        return;
+    }
+
+    if (target_client == &client)
+    {
+        server->dmClient(client, ERR_CANNOTSENDTOCHAN, channel_name + " :You cannot kick yourself");
+        return;
+    }
+
+    try
+    {
+        std::string kick_msg = "KICK " + channel_name + " " + user_to_kick + (reason.empty() ? "" : " :" + reason);
+        channel->broadcastToMembers(client, kick_msg);
+
+        // Send the kick message to the operator who performed the kick
+        server->sendMessage(client, ":" + client.getNick() + "!" + client.getUsername() + "@localhost " + kick_msg + "\r\n");
+
+        channel->removeMember(*target_client);
+    }
+    catch (const std::exception &e)
+    {
+        server->dmClient(client, ERR_NOSUCHCHANNEL, channel_name + " :" + e.what());
+        return;
+    }
+}
